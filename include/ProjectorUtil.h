@@ -8,11 +8,14 @@
 
 #pragma once
 
+#include "cinder/Xml.h"
 #include "cinder/app/AppBasic.h"
 #include "cinder/gl/GlslProg.h"
+#include "cinder/gl/Fbo.h"
 #include "cinder/gl/gl.h"
 #include "cinder/gl/Texture.h"
-#include "cinder/gl/Fbo.h"
+#include "cinder/Utilities.h"
+#include "cinder/ImageIO.h"
 
 #include "Resources.h"
 #include "CinderOpenCV.h"
@@ -23,29 +26,34 @@ using namespace ci::app;
 using namespace std;
 
 class ProjectorUtil {
-  public:
-    ProjectorUtil();
+public:
+    ProjectorUtil( ci::app::App *app );
     
     void setup( int width, int height );
+    void setup( Vec2i size );
     void begin();
     void end();
     void update();
     void draw();
     
+    void resetHandles();
     void showHandles( bool show=true );
     void showBlending( bool show=true );
-    void mouseDown( MouseEvent event );
-    void mouseUp( MouseEvent event );
-    void mouseDrag( MouseEvent event );
     
-  protected:
+    bool mouseDown( MouseEvent event );
+    bool mouseUp( MouseEvent event );
+    bool mouseDrag( MouseEvent event );
+    
+protected:
     void updateHomography();
+    bool loadXml();
+    void saveXml();
     
     vector<Vec2f> handles;
     
     int         dragging;
     bool        bDrawHandles, bApplyBlend;
-    
+    ci::app::App	*mApp;
     gl::GlslProg	mShader;
     gl::Fbo         mFbo;
     gl::Texture     output, tex;

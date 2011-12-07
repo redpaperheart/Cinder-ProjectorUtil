@@ -8,6 +8,10 @@
 
 #include "ProjectorUtil.h"
 
+ProjectorUtil::ProjectorUtil()
+{  
+}
+
 ProjectorUtil::ProjectorUtil( App *app )
     : mApp( app )
 {    
@@ -117,7 +121,7 @@ void ProjectorUtil::setup( int width, int height)
 		std::cout << "ProjectorUtil :: Unable to load shader" << std::endl;
 	}
     
-    updateHomography( points );
+    updateHomography( handles );
 }
 
 void ProjectorUtil::resetHandles(){
@@ -134,7 +138,7 @@ void ProjectorUtil::resetHandles(){
     handles[2] = fromOcv( mSource[2] );
     handles[3] = fromOcv( mSource[3] );
     
-    updateHomography( points );
+    updateHomography( handles );
     saveXml();
 }
 
@@ -265,7 +269,7 @@ bool ProjectorUtil::mouseDrag( MouseEvent event )
 {
     if( dragging != -1 ){
         handles[ dragging ] = event.getPos();
-        updateHomography( points );
+        updateHomography( handles );
     }
     
     return false;

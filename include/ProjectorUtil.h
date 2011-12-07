@@ -27,6 +27,7 @@ using namespace std;
 
 class ProjectorUtil {
   public:
+    ProjectorUtil();
     ProjectorUtil( ci::app::App *app );
     
     void setup( int width, int height );
@@ -44,7 +45,7 @@ class ProjectorUtil {
     bool mouseUp( MouseEvent event );
     bool mouseDrag( MouseEvent event );
     
-    void updateHomography( vector<Vec2f> points );
+    Matrix44d updateHomography( vector<Vec2f> points );
 
   protected:
     bool loadXml();

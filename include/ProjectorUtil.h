@@ -40,13 +40,19 @@ class ProjectorUtil {
     void resetHandles();
     void showHandles( bool show=true );
     void showBlending( bool show=true );
+    void setBlendDirection( int blendDir );
+    void setBlendAmount( float pct );
     
     bool mouseDown( MouseEvent event );
     bool mouseUp( MouseEvent event );
     bool mouseDrag( MouseEvent event );
     
-    Matrix44d updateHomography( vector<Vec2f> points );
-
+    static const int BLEND_LEFT = 0;
+    static const int BLEND_RIGHT = 1;
+        
+    Matrix44d updateHomography( vector<Vec2f> source, vector<Vec2f> dest );
+    Matrix44d updateHomography( cv::Point2f source[4], vector<Vec2f> dest );
+    
   protected:
     bool loadXml();
     void saveXml();
@@ -54,7 +60,8 @@ class ProjectorUtil {
     vector<Vec2f> handles;
     
     int         dragging;
-    bool        bDrawHandles, bApplyBlend;
+    bool        bDrawHandles, bApplyBlend, blendDirection;
+    float       mBlendPct;
     ci::app::App	*mApp;
     gl::GlslProg	mShader;
     gl::Fbo         mFbo;

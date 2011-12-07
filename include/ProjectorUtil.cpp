@@ -9,7 +9,9 @@
 #include "ProjectorUtil.h"
 
 ProjectorUtil::ProjectorUtil()
-{  
+{
+    blendDirection = ProjectorUtil::BLEND_RIGHT;
+    mBlendPct = 0.2;  
 }
 
 ProjectorUtil::ProjectorUtil( App *app )
@@ -18,6 +20,9 @@ ProjectorUtil::ProjectorUtil( App *app )
     mApp->registerMouseDown( this, &ProjectorUtil::mouseDown );
     mApp->registerMouseUp( this, &ProjectorUtil::mouseUp );
     mApp->registerMouseDrag( this, &ProjectorUtil::mouseDrag );
+    
+    blendDirection = ProjectorUtil::BLEND_RIGHT;
+        mBlendPct = 0.2;
 }
 
 bool ProjectorUtil::loadXml(){
@@ -121,7 +126,7 @@ void ProjectorUtil::setup( int width, int height)
 		std::cout << "ProjectorUtil :: Unable to load shader" << std::endl;
 	}
     
-    updateHomography( handles );
+    updateHomography( mSource, handles );
 }
 
 void ProjectorUtil::resetHandles(){
@@ -138,7 +143,7 @@ void ProjectorUtil::resetHandles(){
     handles[2] = fromOcv( mSource[2] );
     handles[3] = fromOcv( mSource[3] );
     
-    updateHomography( handles );
+    updateHomography( mSource, handles );
     saveXml();
 }
 
@@ -176,17 +181,21 @@ void ProjectorUtil::draw()
         
         if( false && bApplyBlend && mShader ){
             tex.enableAndBind();
-            mShader.bind();
-            
-                mShader.uniform( "sampler2D", 0 );
-                mShader.uniform( "exponent", float(2.0) );
-                mShader.uniform( "luminance", Vec3f(0.5, 0.5, 0.5) );
-                mShader.uniform( "gamma", Vec3f(1.8, 1.5, 1.2) );
-                mShader.uniform( "edges", Vec4f(0.0, 0.0, 0.2, 0.0) );
-                
-                gl::drawSolidRect( Rectf( Vec2f::zero(), tex.getSize() ) );
-            mShader.unbind();
-            tex.unbind();
+                        mShader.bind();
+
+                        mShader.uniform( "sampler2D", 0 );
+                        mShader.uniform( "exponent", float(2.0) );
+                        mShader.uniform( "luminance", Vec3f(0.5, 0.5, 0.5) );
+                        mShader.uniform( "gamma", Vec3f(1.8, 1.5, 1.2) );
+
+                        if( blendDirection == ProjectorUtil::BLEND_RIGHT){
+                            mShader.uniform( "edges", Vec4f(0.0, 0.0, mBlendPct, 0.0) );
+                        }else if( blendDirection == ProjectorUtil::BLEND_LEFT){
+                            mShader.uniform( "edges", Vec4f(mBlendPct, 0.0, 0.0, 0.0) );
+                        }
+                        gl::drawSolidRect( Rectf( Vec2f::zero(), tex.getSize() ) );
+                        mShader.unbind();
+                        tex.unbind();
         }else{
             gl::draw( tex );
         }
@@ -201,13 +210,25 @@ void ProjectorUtil::draw()
     }
 }
 
-Matrix44d ProjectorUtil::updateHomography( vector<Vec2f> points )
+
+Matrix44d ProjectorUtil::updateHomography( vector<Vec2f> source, vector<Vec2f> dest )
+{
+    cv::Point2f src[4];
+    src[0] = toOcv( source[0] );
+    src[1] = toOcv( source[1] );
+    src[2] = toOcv( source[2] );
+    src[3] = toOcv( source[3] );
+    
+    return updateHomography( src, dest);
+}
+
+Matrix44d ProjectorUtil::updateHomography( cv::Point2f source[4], vector<Vec2f> dest )
 {    
     for( int i=0; i<4; i++ )
-        mDestination[i] = toOcv( points[i] );
+        mDestination[i] = toOcv( dest[i] );
     
     // calculate warp matrix
-    cv::Mat	warp = cv::getPerspectiveTransform( mSource, mDestination );
+    cv::Mat	warp = cv::getPerspectiveTransform( source, mDestination );
     
     // convert to OpenGL matrix
     mTransform.setToIdentity();
@@ -236,6 +257,14 @@ void ProjectorUtil::showHandles( bool show )
 void ProjectorUtil::showBlending( bool show )
 {
     bApplyBlend = show;
+}
+
+void ProjectorUtil::setBlendDirection( int blendDir ){
+    blendDirection = blendDir;
+}
+
+void ProjectorUtil::setBlendAmount( float pct ){
+    mBlendPct = pct;
 }
 
 bool ProjectorUtil::mouseDown( MouseEvent event )
@@ -269,7 +298,7 @@ bool ProjectorUtil::mouseDrag( MouseEvent event )
 {
     if( dragging != -1 ){
         handles[ dragging ] = event.getPos();
-        updateHomography( handles );
+        updateHomography( mSource, handles );
     }
     
     return false;

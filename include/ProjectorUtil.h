@@ -44,8 +44,10 @@ public:
     bool mouseUp( MouseEvent event );
     bool mouseDrag( MouseEvent event );
     
+    
+    
 protected:
-    void updateHomography();
+    void updateHomography( vector<Vec2f> points );
     bool loadXml();
     void saveXml();
     

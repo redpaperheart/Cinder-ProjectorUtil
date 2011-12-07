@@ -117,7 +117,7 @@ void ProjectorUtil::setup( int width, int height)
 		std::cout << "ProjectorUtil :: Unable to load shader" << std::endl;
 	}
     
-    updateHomography();
+    updateHomography( points );
 }
 
 void ProjectorUtil::resetHandles(){
@@ -134,7 +134,7 @@ void ProjectorUtil::resetHandles(){
     handles[2] = fromOcv( mSource[2] );
     handles[3] = fromOcv( mSource[3] );
     
-    updateHomography();
+    updateHomography( points );
     saveXml();
 }
 
@@ -197,10 +197,10 @@ void ProjectorUtil::draw()
     }
 }
 
-void ProjectorUtil::updateHomography()
+Matrix44d ProjectorUtil::updateHomography( vector<Vec2f> points )
 {    
     for( int i=0; i<4; i++ )
-        mDestination[i] = toOcv( handles[i] );
+        mDestination[i] = toOcv( points[i] );
     
     // calculate warp matrix
     cv::Mat	warp = cv::getPerspectiveTransform( mSource, mDestination );
@@ -219,6 +219,8 @@ void ProjectorUtil::updateHomography()
     mTransform[3]	= warp.ptr<double>(2)[0]; 
     mTransform[7]	= warp.ptr<double>(2)[1];
     mTransform[15]	= warp.ptr<double>(2)[2];
+    
+    return mTransform;
 }
 
 
@@ -263,7 +265,7 @@ bool ProjectorUtil::mouseDrag( MouseEvent event )
 {
     if( dragging != -1 ){
         handles[ dragging ] = event.getPos();
-        updateHomography();
+        updateHomography( points );
     }
     
     return false;

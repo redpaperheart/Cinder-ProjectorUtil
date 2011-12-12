@@ -213,13 +213,31 @@ void ProjectorUtil::draw()
 
 Matrix44d ProjectorUtil::updateHomography( vector<Vec2f> source, vector<Vec2f> dest )
 {
+    Vec2f sc[4];
+    Vec2f dst[4];
+    Matrix44d mat;
+    
+    for(int i=0; i<4; i++){
+        sc[i] = source[i];
+        dst[i] = dest[i];
+    }
+    
+    float homography[16];
+    ofxHomographyHelper::findHomography( sc, dst, homography );
+        
+    for( int k=0; k<16; k++)
+        mat[k] = homography[k];
+    
+//    cout << "Homography " << homography << endl;
+
+    
     cv::Point2f src[4];
     src[0] = toOcv( source[0] );
     src[1] = toOcv( source[1] );
     src[2] = toOcv( source[2] );
     src[3] = toOcv( source[3] );
     
-    return updateHomography( src, dest);
+    return updateHomography( src, dest);    
 }
 
 Matrix44d ProjectorUtil::updateHomography( cv::Point2f source[4], vector<Vec2f> dest )
@@ -229,6 +247,8 @@ Matrix44d ProjectorUtil::updateHomography( cv::Point2f source[4], vector<Vec2f> 
     
     // calculate warp matrix
     cv::Mat	warp = cv::getPerspectiveTransform( source, mDestination );
+//    cv::Mat warp = cv::findHomography( dest, dest );
+    
     
     // convert to OpenGL matrix
     mTransform.setToIdentity();

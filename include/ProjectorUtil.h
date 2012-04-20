@@ -19,6 +19,7 @@
 
 #include "Resources.h"
 #include "CinderOpenCV.h"
+#include "ofxHomographyHelper.h"
 
 
 using namespace ci;

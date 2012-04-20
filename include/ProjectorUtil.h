@@ -36,6 +36,7 @@ class ProjectorUtil {
     void end();
     void update();
     void draw();
+    void draw( Rectf rect );
     
     void resetHandles();
     void showHandles( bool show=true );
@@ -53,9 +54,10 @@ class ProjectorUtil {
     Matrix44d updateHomography( vector<Vec2f> source, vector<Vec2f> dest );
     Matrix44d updateHomography( cv::Point2f source[4], vector<Vec2f> dest );
     
+    void saveXml();
+    
   protected:
     bool loadXml();
-    void saveXml();
     
     vector<Vec2f> handles;
     

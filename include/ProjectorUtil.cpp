@@ -22,40 +22,33 @@ ProjectorUtil::ProjectorUtil( App *app )
     mApp->registerMouseDrag( this, &ProjectorUtil::mouseDrag );
     
     blendDirection = ProjectorUtil::BLEND_RIGHT;
-        mBlendPct = 0.2;
+    mBlendPct = 0.2;
 }
 
 bool ProjectorUtil::loadXml(){
     
-    string pth = getAppPath();
-    int pos = pth.find_last_of("/");
-    pth = pth.substr( 0, pos );
+    string str = ci::app::App::getResourcePath().string() + "/projectorSettings.xml";
+    fs::path pth( str );
 
-    XmlTree doc;
-    
     try{
-        doc = XmlTree( loadFile( toString(pth) + "/projectorSettings.xml" ) );
+        XmlTree doc = XmlTree( loadFile( pth.string() ) );
+        
+        XmlTree &firstPoint = doc.getChild( "root/handles/" );
+        for( XmlTree::Iter child = firstPoint.begin(); child != firstPoint.end(); ++child ){        
+            float xx = child->getChild("x").getValue<float>();
+            float yy = child->getChild("y").getValue<float>();
+            
+            handles.push_back( Vec2f( xx, yy ) );
+        }
+
     }catch(...){
         return false;
     }    
     
-    XmlTree firstPoint = doc.getChild( "root/handles/" );
-    for( XmlTree::Iter child = firstPoint.begin(); child != firstPoint.end(); ++child ){        
-        float xx = child->getChild("x").getValue<float>();
-        float yy = child->getChild("y").getValue<float>();
-        
-        handles.push_back( Vec2f( xx, yy ) );
-    }
-    
-    
     return true;
 }
 
-void ProjectorUtil::saveXml(){
-    string pth = getAppPath();
-    int pos = pth.find_last_of("/");
-    pth = pth.substr( 0, pos );
-    
+void ProjectorUtil::saveXml(){    
     XmlTree library( "root", "" );
     XmlTree handleXml( "handles", "");
     
@@ -76,8 +69,11 @@ void ProjectorUtil::saveXml(){
     
     library.push_back( handleXml );
     
-    library.write( writeFile( toString(pth) + "/projectorSettings.xml" ) );
-    cout << "ProjectorUtil :: data written to " << toString(pth) + "/projectorSettings.xml" << endl;
+    string str = ci::app::App::getResourcePath().string() + "/projectorSettings.xml";
+    fs::path pth( str );
+    
+    library.write( writeFile( pth.string() ) );
+    cout << "ProjectorUtil :: data written to " << pth.string() << endl;
 }
 
 void ProjectorUtil::setup( int width, int height)
@@ -85,9 +81,11 @@ void ProjectorUtil::setup( int width, int height)
     // setup fbo
     mFbo = gl::Fbo( width, height );
     
+    console() << "SETUP :: " << width << " " << height << endl;
+    
     // set up handles for skewing
     bDrawHandles = false;
-    bApplyBlend = true;
+    bApplyBlend = false;
     
     Vec2f v1( 0, 0 );
     Vec2f v2( width, 0 );
@@ -96,7 +94,9 @@ void ProjectorUtil::setup( int width, int height)
     
     if( loadXml() ){
         // handles were loaded. yay.
+        console() << "ProjectorUtil :: Handles successfully loaded" << endl;
     }else{
+        console() << "ProjectorUtil :: Couldn't load handles" << endl;
         
         // handles added in reverse order to compensate for flipped fbo texture
         handles.push_back( v4 );
@@ -126,23 +126,26 @@ void ProjectorUtil::setup( int width, int height)
 		std::cout << "ProjectorUtil :: Unable to load shader" << std::endl;
 	}
     
+    
+    console() << "HANDLE SIZE " << handles.size() << endl;
+    
     updateHomography( mSource, handles );
 }
 
 void ProjectorUtil::resetHandles(){
     
-    /*
+    
     handles[0] = fromOcv( mSource[3] );
     handles[1] = fromOcv( mSource[2] );
     handles[2] = fromOcv( mSource[1] );
     handles[3] = fromOcv( mSource[0] );
-    */
     
+    /*
     handles[0] = fromOcv( mSource[0] );
     handles[1] = fromOcv( mSource[1] );
     handles[2] = fromOcv( mSource[2] );
     handles[3] = fromOcv( mSource[3] );
-    
+    */
     updateHomography( mSource, handles );
     saveXml();
 }
@@ -153,10 +156,9 @@ void ProjectorUtil::setup( Vec2i size ){
 
 void ProjectorUtil::begin()
 {
-    gl::setMatricesWindow( mFbo.getSize() );
+//    gl::setMatricesWindow( mFbo.getSize() );
     
     mFbo.bindFramebuffer();
-    glClear(GL_DEPTH_BUFFER_BIT );
     gl::clear( Color(0, 0, 0) );
 }
 
@@ -164,7 +166,7 @@ void ProjectorUtil::end()
 {
     mFbo.unbindFramebuffer();
     
-    gl::setMatricesWindow( getWindowSize() );
+//    gl::setMatricesWindow( getWindowSize() );
 }
 
 void ProjectorUtil::update(){
@@ -178,35 +180,36 @@ void ProjectorUtil::draw()
     
     gl::pushModelView();{
         gl::multModelView( mTransform );
-        
-        if( false && bApplyBlend && mShader ){
-            tex.enableAndBind();
-                        mShader.bind();
-
-                        mShader.uniform( "sampler2D", 0 );
-                        mShader.uniform( "exponent", float(2.0) );
-                        mShader.uniform( "luminance", Vec3f(0.5, 0.5, 0.5) );
-                        mShader.uniform( "gamma", Vec3f(1.8, 1.5, 1.2) );
-
-                        if( blendDirection == ProjectorUtil::BLEND_RIGHT){
-                            mShader.uniform( "edges", Vec4f(0.0, 0.0, mBlendPct, 0.0) );
-                        }else if( blendDirection == ProjectorUtil::BLEND_LEFT){
-                            mShader.uniform( "edges", Vec4f(mBlendPct, 0.0, 0.0, 0.0) );
-                        }
-                        gl::drawSolidRect( Rectf( Vec2f::zero(), tex.getSize() ) );
-                        mShader.unbind();
-                        tex.unbind();
-        }else{
-            gl::draw( tex );
-        }
-        
+        gl::draw( tex );
     }gl::popModelView();
     
     // draw handles
-    int size = 5;
-    gl::color( Color(255, 0, 255) );
+    if( !bDrawHandles )
+        return;
+    
+    gl::color( ColorA(255, 0, 255, 0.2) );
     for(vector<Vec2f>::iterator it = handles.begin(); it < handles.end(); ++it){
-        gl::drawSolidRect( Rectf( it->x-size, it->y-size, it->x + size, it->y + size) );
+        gl::drawSolidCircle( *it, 20);
+    }
+}
+
+void ProjectorUtil::draw( Rectf rect )
+{
+    gl::Texture tex = mFbo.getTexture();
+    //    tex.setFlipped( true );
+    
+    gl::pushModelView();{
+        gl::multModelView( mTransform );
+        gl::draw( tex, rect );
+    }gl::popModelView();
+    
+    // draw handles
+    if( !bDrawHandles )
+        return;
+    
+    gl::color( ColorA(255, 0, 255, 0.2) );
+    for(vector<Vec2f>::iterator it = handles.begin(); it < handles.end(); ++it){
+        gl::drawSolidCircle( *it, 20);
     }
 }
 
@@ -271,6 +274,7 @@ bool ProjectorUtil::mouseDown( MouseEvent event )
 {
     int count = 0;
     for(vector<Vec2f>::iterator it = handles.begin(); it < handles.end(); ++it){
+        
         Vec2f v = event.getPos() - *it;
         
         if( v.length() < 100 ){
